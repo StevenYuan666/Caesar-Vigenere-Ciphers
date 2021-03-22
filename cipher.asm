@@ -1,4 +1,4 @@
-# TODO: PUT YOUR NAME AND STUDENT NUMBER HERE!!!
+# TODO: Ye Yuan 260921269
 # TODO: ADD OTHER COMMENTS YOU HAVE HERE AT THE TOP OF THIS FILE
 # TODO: SEE LABELS FOR PROCEDURES YOU MUST IMPLEMENT AT THE BOTTOM OF THIS FILE
 # TODO: NOTICE THE TODO IN THE .DATA SEGMENT
@@ -259,20 +259,20 @@ EncryptBuffer:	# TODO: Implement this function!
 		lb $t0 ($a0) #load the current character
 		lb $t1 ($a1) #load the current key
  		beq $t0 $zero EnExit #reach the end of the string, jump back to the main function
- 		blt $t0 'A' EnSkip #when the current character is not Uppercase Letter
- 		bgt $t0 'Z' EnSkip #when the current character is not Uppercase Letter
  		beq $t1 $zero EnReset #reach the end of the key, iterate from the head again, need to reset here
  		j EnBack
 EnReset:	la $a1 KEY_STRING
 		lb $t1 ($a1)
-EnBack: 	sub $t1 $t1 'A'
+EnBack: 	blt $t0 'A' EnSkip #when the current character is not Uppercase Letter
+ 		bgt $t0 'Z' EnSkip #when the current character is not Uppercase Letter
+	 	sub $t1 $t1 'A'
 		add $t0 $t0 $t1 #shift the current character by given key steps
 		bgt $t0 'Z' EnTrue #If after shifting the value is over character bound, shift back by minus 26
 		j EnCon
 EnTrue:		subi $t0 $t0 26
 EnCon:		sb $t0 ($a0) #store the byte
-		addi $a1 $a1 1 #move to the next key
-EnSkip:		addi $a0 $a0 1 #move to the next character #when we meet a non character, we only need to skip the char not the key
+EnSkip:		addi $a1 $a1 1 #move to the next key
+		addi $a0 $a0 1 #move to the next character
 		b EncryptBuffer	#iterate again
 EnExit:		jr $ra
 
@@ -283,20 +283,20 @@ DecryptBuffer:	# TODO: Implement this function!
 		lb $t0 ($a0) #load the current character
 		lb $t1 ($a1) #load the current key
  		beq $t0 $zero DeExit #reach the end of the string, jump back to the main function
- 		blt $t0 'A' DeSkip #when the current character is not Uppercase Letter
- 		bgt $t0 'Z' DeSkip #when the current character is not Uppercase Letter
  		beq $t1 $zero DeReset #reach the end of the key, iterate from the head again, need to reset here
  		j DeBack
 DeReset:	la $a1 KEY_STRING
 		lb $t1 ($a1)
-DeBack: 	sub $t1 $t1 'A'
+DeBack: 	blt $t0 'A' DeSkip #when the current character is not Uppercase Letter
+ 		bgt $t0 'Z' DeSkip #when the current character is not Uppercase Letter
+	 	sub $t1 $t1 'A'
 		sub $t0 $t0 $t1 #shift the current character by given key steps
 		blt $t0 'A' DeTrue #If after shifting the value is less than character bound, shift back by add 26
 		j DeCon
 DeTrue:		addi $t0 $t0 26
 DeCon:		sb $t0 ($a0) #store the byte
-		addi $a1 $a1 1 #move to the next key
-DeSkip:		addi $a0 $a0 1 #move to the next character #when we meet a non character, we only need to skip the char not the key
+DeSkip:		addi $a1 $a1 1 #move to the next key
+		addi $a0 $a0 1 #move to the next character #when we meet a non character, we only need to skip the char not the key
 		b DecryptBuffer	#iterate again
 DeExit:		jr $ra
 
@@ -306,6 +306,21 @@ DeExit:		jr $ra
 # a2 KeyString - on return will contain null terminated string with guess
 # a3 common letter guess - for instance 'E' 
 GuessKey:	# TODO: Implement this function!
+		#The idea here is that since we may read a file with smaller length than the file we have read, so the buffer may
+		#contain parts of the last file. As a consequence, we should set at least one multiple length of key to be null after
+		#the true terminator. Otherwise, we may count the characters from the last file.
+		lb $t1 ($a1) #load the current char
+		li $t0 0 #set the counter to be zero
+FindNull:	beq $t1 $zero Initialize #when we find the first null, set the remaining part as null as well
+		addi $a1 $a1 1 #update counter
+		lb $t1 ($a1)
+		j FindNull #iterate again
+Initialize:	beq $t0 $a0 CountPre #when after the initialization, start the main loop
+		addi $a1 $a1 1 #update the counter
+		addi $t0 $t0 1 
+		sb $zero ($a1) #store it as null
+		j Initialize #iterate again
+CountPre:	la $a1 TEXT_BUFFER #reset the a1 at the head of the buffer
 		li $t0 0 #k in the formula
 Count:		lb $t2 ($a1) #load the current character
 		la $t3 ALPHABET #load the array we record the frequencies
@@ -352,5 +367,6 @@ FBack2:		addi $t9 $t9 'A' #let the key in the range of A - Z in ASCII
 		addi $a2 $a2 1
 		j FindMaxBack #jump out the FindMax loop
 NeedAdd:	addi $t9 $t9 26 #We should add the key by 26 to let it in the range A - Z
-		j FBack2 #jump back to the 
-GuessExit:	jr $ra #jump back to main function
+		j FBack2 #jump back to the Exit Process
+GuessExit:	sb $zero ($a2)
+		jr $ra #jump back to main function
